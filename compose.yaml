@@ -1,0 +1,26 @@
+services:
+  retailops-api:
+    build: .
+    environment:
+      VLLM_MODEL: ${VLLM_MODEL:-google/gemma-4-31B-it-qat-w4a16-ct}
+      VLLM_BASE_URL: ${DOCKER_VLLM_BASE_URL:-http://host.docker.internal:8000/v1}
+      VLLM_API_KEY: ${VLLM_API_KEY:-dummy}
+      DATABASE_URL: sqlite:////app/data/retailops.db
+      POLICY_DIR: /app/policies
+      TRACE_DIR: /app/traces
+    ports:
+      - "8080:8080"
+    volumes:
+      - retailops-data:/app/data
+      - retailops-traces:/app/traces
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  retailops-data:
+  retailops-traces:
