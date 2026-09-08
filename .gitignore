@@ -9,3 +9,4 @@ htmlcov/
 .env
 data/
 traces/
+AGENTS.md
