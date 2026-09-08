@@ -1,5 +1,5 @@
 from conftest import ScriptedModel
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 
 from retailops.agent.harness import AgentHarness
 from retailops.domain.models import Order
@@ -28,6 +28,26 @@ def test_read_tool_loops_back_to_model(settings, tools, policies, traces) -> Non
     assert result.pending_action is None
     assert result.llm_calls == 2
     assert result.tool_calls == 1
+
+
+def test_system_prompt_and_retrieval_limit_come_from_settings(
+    settings, tools, policies, traces, tmp_path
+) -> None:
+    prompt_path = tmp_path / "system.txt"
+    prompt_path.write_text("Configured prompt\n{policy_context}", encoding="utf-8")
+    configured = settings.model_copy(
+        update={"agent_system_prompt_path": prompt_path, "policy_context_limit": 1}
+    )
+    model = ScriptedModel([AIMessage(content="Done")])
+    harness = AgentHarness(configured, tools, policies, traces, model=model)
+    session_id, _ = harness.create_session("cus_001")
+
+    harness.chat(session_id, "Can I cancel an order?")
+
+    system = model.invocations[0][0]
+    assert isinstance(system, SystemMessage)
+    assert str(system.content).startswith("Configured prompt")
+    assert str(system.content).count("[Policy:") == 1
 
 
 def test_mutation_waits_for_approval_then_executes(

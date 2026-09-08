@@ -2,13 +2,31 @@ import json
 from pathlib import Path
 
 import typer
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from retailops.config import get_settings
 from retailops.container import build_runtime
 from retailops.evals.runner import EvaluationRunner
+from retailops.llm import build_chat_model
 from retailops.seed import seed_database
 
 app = typer.Typer(help="RetailOps local-first agent platform.", no_args_is_help=True)
+
+
+@app.command("llm-request")
+def llm_request(
+    prompt: str = typer.Argument(help="Prompt to send to the configured model."),
+    system_prompt: str | None = typer.Option(None, "--system", help="Optional system prompt."),
+) -> None:
+    """Send one prompt directly to the configured LLM."""
+    settings = get_settings()
+    model = build_chat_model(settings)
+    messages = []
+    if system_prompt:
+        messages.append(SystemMessage(content=system_prompt))
+    messages.append(HumanMessage(content=prompt))
+    response = model.invoke(messages)
+    typer.echo(response.content)
 
 
 @app.command()

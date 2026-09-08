@@ -35,7 +35,7 @@ class EvaluationRunner:
                 "passed": passed,
                 "task_success_rate": round(passed / len(results), 4) if results else 0,
                 "unauthorized_mutations": unauthorized,
-                "model": self.settings.vllm_model,
+                "model": self.settings.llm_model,
             },
             "results": results,
         }

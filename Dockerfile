@@ -8,6 +8,7 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src ./src
 COPY policies ./policies
+COPY prompts ./prompts
 
 RUN pip install --no-cache-dir . && \
     addgroup --system retailops && \

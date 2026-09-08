@@ -2,12 +2,17 @@ services:
   retailops-api:
     build: .
     environment:
-      VLLM_MODEL: ${VLLM_MODEL:-google/gemma-4-31B-it-qat-w4a16-ct}
-      VLLM_BASE_URL: ${DOCKER_VLLM_BASE_URL:-http://host.docker.internal:8000/v1}
-      VLLM_API_KEY: ${VLLM_API_KEY:-dummy}
+      LLM_MODEL: ${LLM_MODEL:-google/gemma-4-31B-it-qat-w4a16-ct}
+      LLM_BASE_URL: ${DOCKER_LLM_BASE_URL:-http://host.docker.internal:8000/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-dummy}
+      LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0}
       DATABASE_URL: sqlite:////app/data/retailops.db
       POLICY_DIR: /app/policies
       TRACE_DIR: /app/traces
+      AGENT_SYSTEM_PROMPT_PATH: /app/prompts/retailops_system.txt
+      POLICY_CONTEXT_LIMIT: ${POLICY_CONTEXT_LIMIT:-4}
+      MAX_LLM_CALLS: ${MAX_LLM_CALLS:-8}
+      MAX_TOOL_CALLS: ${MAX_TOOL_CALLS:-12}
     ports:
       - "8080:8080"
     volumes:

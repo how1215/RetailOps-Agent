@@ -16,12 +16,14 @@ class ScriptedModel:
     def __init__(self, responses: list[Any]) -> None:
         self.responses = deque(responses)
         self.bound_tools: list[dict[str, Any]] = []
+        self.invocations: list[list[Any]] = []
 
     def bind_tools(self, tools: list[dict[str, Any]]):
         self.bound_tools = tools
         return self
 
     def invoke(self, messages):
+        self.invocations.append(messages)
         if not self.responses:
             raise AssertionError("Scripted model has no response left")
         return self.responses.popleft()

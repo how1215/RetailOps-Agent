@@ -5,7 +5,6 @@ from typing import Annotated, Any, TypedDict
 from uuid import uuid4
 
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage, ToolMessage
-from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
@@ -13,11 +12,12 @@ from pydantic import ValidationError
 
 from retailops.agent.policies import PolicyIndex
 from retailops.config import Settings
+from retailops.llm import build_chat_model
 from retailops.telemetry import TraceStore
 from retailops.tools.commerce import CommerceTools, ToolContext, ToolError
 
 
-class AgentState(TypedDict, total=False):
+class AgentState(TypedDict, total=False):#totall=False代表所有欄位都必填
     messages: Annotated[list[AnyMessage], add_messages]
     customer_id: str
     trace_id: str
@@ -26,7 +26,7 @@ class AgentState(TypedDict, total=False):
     pending_action: dict[str, Any] | None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True)#frozen=True代筆屬性不可變的
 class AgentResult:
     session_id: str
     trace_id: str
@@ -49,13 +49,11 @@ class AgentHarness:
         self.tools = tools
         self.policies = policies
         self.traces = traces
-        self.model = model or ChatOpenAI(
-            model=settings.vllm_model,
-            base_url=settings.vllm_base_url,
-            api_key=settings.vllm_api_key,
-            temperature=0,
-        )
+        self.model = model or build_chat_model(settings)
         self.model_with_tools = self.model.bind_tools(tools.schemas())
+        self.system_prompt_template = settings.agent_system_prompt_path.read_text(encoding="utf-8")
+        if "{policy_context}" not in self.system_prompt_template:
+            raise ValueError("Agent system prompt must contain {policy_context}.")
         self._sessions: dict[str, tuple[str, str]] = {}
         self.graph = self._build_graph()
 
@@ -173,7 +171,10 @@ class AgentHarness:
             ),
             "",
         )
-        policy_context = self.policies.context(str(last_user))
+        #將最後一個用戶請求來人找相關policy作為context的system prompt
+        policy_context = self.policies.context(
+            str(last_user), limit=self.settings.policy_context_limit
+        )
         system = SystemMessage(content=self._system_prompt(policy_context))
         started = time.perf_counter()
         response = self.model_with_tools.invoke([system, *state["messages"]])
@@ -255,17 +256,8 @@ class AgentHarness:
     def _route_after_tools(state: AgentState) -> str:
         return END if state.get("pending_action") else "assistant"
 
-    @staticmethod
-    def _system_prompt(policy_context: str) -> str:
-        return f"""You are RetailOps, a careful commerce operations assistant.
-The API caller has already authenticated the customer. Use tools for order facts; never invent
-order state. Follow the policy excerpts below. A mutation tool returns an approval request first,
-so do not claim it executed until its later tool result says executed. Do not repeat a pending
-mutation. If policy forbids an action, explain why and offer escalation. Keep replies concise.
-
-Relevant policy excerpts:
-{policy_context}
-"""
+    def _system_prompt(self, policy_context: str) -> str:
+        return self.system_prompt_template.replace("{policy_context}", policy_context)
 
     def _result(self, session_id: str, state: AgentState) -> AgentResult:
         last_ai = next(

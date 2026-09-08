@@ -1,9 +1,9 @@
 # RetailOps Agent
 
 RetailOps is a local-first, policy-aware commerce agent built to demonstrate reliable LLM
-systems engineering. It uses Gemma 4 through a vLLM OpenAI-compatible endpoint and combines
-LangGraph orchestration with a custom harness for typed tools, approval gates, budgets,
-telemetry, and deterministic evaluation.
+systems engineering. It uses an OpenAI-compatible endpoint (Gemma 4 through vLLM by default)
+and combines LangGraph orchestration with a custom harness for typed tools, approval gates,
+budgets, telemetry, and deterministic evaluation.
 
 ## Current vertical slice
 
@@ -36,8 +36,60 @@ uv run pytest
 uv run retailops eval-run
 ```
 
-The vLLM endpoint is configured with `VLLM_BASE_URL`, `VLLM_MODEL`, and `VLLM_API_KEY`.
-No cloud model is required.
+Runtime configuration is loaded from `.env` through the typed `Settings` class. Model creation is
+centralized in `src/retailops/llm.py`, and the Agent system prompt lives in
+`prompts/retailops_system.txt`. This keeps deployment secrets, tuning parameters, and prompt text
+separate. The older `VLLM_MODEL`, `VLLM_BASE_URL`, and `VLLM_API_KEY` names are still accepted for
+backward compatibility.
+
+Common tuning settings:
+
+| Setting | Purpose | Default |
+| --- | --- | --- |
+| `LLM_MODEL` | OpenAI-compatible model name | Gemma 4 vLLM model |
+| `LLM_BASE_URL` | OpenAI-compatible API endpoint | Local vLLM |
+| `LLM_API_KEY` | API credential | `dummy` for local vLLM |
+| `LLM_TEMPERATURE` | Model response randomness | `0` |
+| `AGENT_SYSTEM_PROMPT_PATH` | Version-controlled system prompt template | `prompts/retailops_system.txt` |
+| `POLICY_CONTEXT_LIMIT` | Maximum retrieved policy chunks per LLM call | `4` |
+| `MAX_LLM_CALLS` | LLM call budget per user turn | `8` |
+| `MAX_TOOL_CALLS` | Tool call budget per user turn | `12` |
+
+The prompt template must retain the `{policy_context}` placeholder. Business invariants such as
+customer ownership, approval requirements, and return eligibility remain enforced in code rather
+than being runtime-tunable configuration.
+
+### Google AI Studio / Gemini API
+
+The existing OpenAI-compatible client can call Gemini without another SDK. Create an API key
+in Google AI Studio, then replace the three model values in `.env`:
+
+```dotenv
+LLM_MODEL=gemini-3.7-flash
+LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+LLM_API_KEY=your-google-ai-studio-api-key
+```
+
+Send a prompt directly to the configured model without running the RetailOps agent or tools:
+
+```bash
+uv run retailops llm-request "Reply with exactly: Gemini API OK"
+```
+
+An optional system prompt can be supplied separately:
+
+```bash
+uv run retailops llm-request "Explain idempotency." --system "Answer in Traditional Chinese."
+```
+
+Keep the API key out of version control. When running with Docker Compose, set
+`DOCKER_LLM_BASE_URL` instead of `LLM_BASE_URL`:
+
+```dotenv
+LLM_MODEL=gemini-3.7-flash
+DOCKER_LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+LLM_API_KEY=your-google-ai-studio-api-key
+```
 
 ## Safety model
 
@@ -54,7 +106,7 @@ User/API
 Context builder ── policy index
    │
    ▼
-Gemma 4 / vLLM
+OpenAI-compatible LLM
    │ tool calls
    ▼
 Harness validator ── budget ── approval gate
@@ -105,7 +157,7 @@ The API can run in Docker while vLLM remains on the host:
 docker compose up --build
 ```
 
-Set `DOCKER_VLLM_BASE_URL` when the model endpoint is not available at
+Set `DOCKER_LLM_BASE_URL` when the model endpoint is not available at
 `http://host.docker.internal:8000/v1`.
 
 See [docs/architecture.md](docs/architecture.md) for the main design decisions and current
