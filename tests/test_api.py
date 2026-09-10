@@ -43,6 +43,21 @@ def test_session_and_message_contract(settings) -> None:
     assert message_response.json()["pending_action"] is None
 
 
+def test_web_ui_is_served_at_root(settings) -> None:
+    runtime = build_runtime(
+        settings,
+        model=ScriptedModel([AIMessage(content="Unused")]),
+    )
+
+    with TestClient(create_app(runtime)) as client:
+        response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "RetailOps Agent Playground" in response.text
+    assert 'action="/v1/sessions"' not in response.text
+
+
 def test_approval_contract_executes_pending_action(settings) -> None:
     runtime = build_runtime(
         settings,

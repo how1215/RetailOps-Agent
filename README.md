@@ -29,6 +29,10 @@ Run the API:
 uv run retailops serve
 ```
 
+Then open [http://127.0.0.1:8080](http://127.0.0.1:8080) for the interactive playground. It can
+create customer sessions, send agent messages, approve or decline pending actions, and inspect the
+current trace. Swagger remains available at [http://127.0.0.1:8080/docs](http://127.0.0.1:8080/docs).
+
 Run tests and the local evaluation suite:
 
 ```bash

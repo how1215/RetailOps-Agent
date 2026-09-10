@@ -1,13 +1,17 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from retailops.agent.harness import AgentResult
 from retailops.container import Runtime, build_runtime
 from retailops.seed import seed_database
 from retailops.tools.commerce import ToolError
+
+WEB_INDEX = Path(__file__).with_name("web") / "index.html"
 
 
 class CreateSessionRequest(BaseModel):
@@ -60,6 +64,10 @@ def create_app(runtime: Runtime | None = None) -> FastAPI:
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/", include_in_schema=False, response_class=FileResponse)
+    def web_ui() -> FileResponse:
+        return FileResponse(WEB_INDEX)
 
     @app.post("/v1/sessions")
     def create_session(payload: CreateSessionRequest) -> dict[str, str]:
