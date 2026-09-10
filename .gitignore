@@ -10,3 +10,4 @@ htmlcov/
 data/
 traces/
 AGENTS.md
+docs/implementation-status.md
