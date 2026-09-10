@@ -265,7 +265,7 @@ class AgentHarness:
             AIMessage(content=""),
         )
         pending = state.get("pending_action")
-        content = str(last_ai.content)
+        content = last_ai.text
         if pending and not content:
             content = f"Approval is required for {pending['name']}."
         return AgentResult(

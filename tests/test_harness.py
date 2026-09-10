@@ -13,9 +13,13 @@ def tool_call(name: str, args: dict, call_id: str = "call_1") -> AIMessage:
 
 
 def test_read_tool_loops_back_to_model(settings, tools, policies, traces) -> None:
+    signed_tool_call = tool_call("get_order", {"order_id": "ord_processing"})
+    signed_tool_call.additional_kwargs["__gemini_function_call_thought_signatures__"] = {
+        "call_1": "test-signature"
+    }
     model = ScriptedModel(
         [
-            tool_call("get_order", {"order_id": "ord_processing"}),
+            signed_tool_call,
             AIMessage(content="Your order is processing."),
         ]
     )
@@ -28,6 +32,28 @@ def test_read_tool_loops_back_to_model(settings, tools, policies, traces) -> Non
     assert result.pending_action is None
     assert result.llm_calls == 2
     assert result.tool_calls == 1
+    replayed_call = next(
+        message
+        for message in model.invocations[1]
+        if isinstance(message, AIMessage) and message.tool_calls
+    )
+    assert replayed_call.additional_kwargs[
+        "__gemini_function_call_thought_signatures__"
+    ] == {"call_1": "test-signature"}
+
+
+def test_result_extracts_text_from_native_content_blocks(
+    settings, tools, policies, traces
+) -> None:
+    model = ScriptedModel(
+        [AIMessage(content=[{"type": "text", "text": "Native Gemini response."}])]
+    )
+    harness = AgentHarness(settings, tools, policies, traces, model=model)
+    session_id, _ = harness.create_session("cus_001")
+
+    result = harness.chat(session_id, "Hello")
+
+    assert result.content == "Native Gemini response."
 
 
 def test_system_prompt_and_retrieval_limit_come_from_settings(

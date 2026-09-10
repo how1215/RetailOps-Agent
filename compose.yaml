@@ -2,6 +2,7 @@ services:
   retailops-api:
     build: .
     environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai_compatible}
       LLM_MODEL: ${LLM_MODEL:-google/gemma-4-31B-it-qat-w4a16-ct}
       LLM_BASE_URL: ${DOCKER_LLM_BASE_URL:-http://host.docker.internal:8000/v1}
       LLM_API_KEY: ${LLM_API_KEY:-dummy}

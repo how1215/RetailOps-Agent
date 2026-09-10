@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -8,6 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", populate_by_name=True)
 
+    llm_provider: Literal["openai_compatible", "google_genai"] = "openai_compatible"
     llm_model: str = Field(
         default="google/gemma-4-31B-it-qat-w4a16-ct",
         validation_alias=AliasChoices("LLM_MODEL", "VLLM_MODEL"),

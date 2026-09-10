@@ -26,7 +26,7 @@ def llm_request(
         messages.append(SystemMessage(content=system_prompt))
     messages.append(HumanMessage(content=prompt))
     response = model.invoke(messages)
-    typer.echo(response.content)
+    typer.echo(response.text)
 
 
 @app.command()

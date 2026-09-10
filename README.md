@@ -46,8 +46,9 @@ Common tuning settings:
 
 | Setting | Purpose | Default |
 | --- | --- | --- |
-| `LLM_MODEL` | OpenAI-compatible model name | Gemma 4 vLLM model |
-| `LLM_BASE_URL` | OpenAI-compatible API endpoint | Local vLLM |
+| `LLM_PROVIDER` | Client integration (`openai_compatible` or `google_genai`) | `openai_compatible` |
+| `LLM_MODEL` | Provider model name | Gemma 4 vLLM model |
+| `LLM_BASE_URL` | API endpoint used by `openai_compatible` | Local vLLM |
 | `LLM_API_KEY` | API credential | `dummy` for local vLLM |
 | `LLM_TEMPERATURE` | Model response randomness | `0` |
 | `AGENT_SYSTEM_PROMPT_PATH` | Version-controlled system prompt template | `prompts/retailops_system.txt` |
@@ -61,13 +62,15 @@ than being runtime-tunable configuration.
 
 ### Google AI Studio / Gemini API
 
-The existing OpenAI-compatible client can call Gemini without another SDK. Create an API key
-in Google AI Studio, then replace the three model values in `.env`:
+Gemini tool calls require provider metadata such as thought signatures to survive across turns.
+The native Google integration preserves that metadata. Create an API key in Google AI Studio,
+then configure `.env` as follows (`LLM_BASE_URL` is ignored by this provider):
 
 ```dotenv
+LLM_PROVIDER=google_genai
 LLM_MODEL=gemini-3.7-flash
-LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 LLM_API_KEY=your-google-ai-studio-api-key
+LLM_TEMPERATURE=1
 ```
 
 Send a prompt directly to the configured model without running the RetailOps agent or tools:
@@ -82,13 +85,13 @@ An optional system prompt can be supplied separately:
 uv run retailops llm-request "Explain idempotency." --system "Answer in Traditional Chinese."
 ```
 
-Keep the API key out of version control. When running with Docker Compose, set
-`DOCKER_LLM_BASE_URL` instead of `LLM_BASE_URL`:
+Keep the API key out of version control. The same provider settings work with Docker Compose:
 
 ```dotenv
+LLM_PROVIDER=google_genai
 LLM_MODEL=gemini-3.7-flash
-DOCKER_LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 LLM_API_KEY=your-google-ai-studio-api-key
+LLM_TEMPERATURE=1
 ```
 
 ## Safety model
